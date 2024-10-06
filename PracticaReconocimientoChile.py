@@ -16,30 +16,38 @@ for img_ruta in imagenes_ruta:
     # Cargar la imagen
     imagen = cv2.imread(img_ruta)
     
-    # Aplicar un filtro gaussiano
-    imagen_gaussiana = cv2.GaussianBlur(imagen, (5, 5), 0)
+    # Aplicar un filtro bilateral para preservar bordes
+    imagen_suavizada = cv2.bilateralFilter(imagen, 9, 75, 75)
 
     # Convertir la imagen de BGR a HSV
-    imagen_hsv = cv2.cvtColor(imagen_gaussiana, cv2.COLOR_BGR2HSV)
+    imagen_hsv = cv2.cvtColor(imagen_suavizada, cv2.COLOR_BGR2HSV)
 
     # Definir límites de color verde fuerte para segmentación
-    limite_inferior = np.array([40, 100, 100], dtype=np.uint8)  
-    limite_superior = np.array([80, 255, 255], dtype=np.uint8)  
+    limite_inferior_fuerte = np.array([40, 100, 100], dtype=np.uint8)  
+    limite_superior_fuerte = np.array([80, 255, 255], dtype=np.uint8)  
 
-    # Crear máscara para los píxeles que cumplen con el límite
-    mascara_verde_fuerte = cv2.inRange(imagen_hsv, limite_inferior, limite_superior)
+    # Definir límites de color verde claro (para sombras o zonas más claras)
+    limite_inferior_claro = np.array([30, 40, 40], dtype=np.uint8)
+    limite_superior_claro = np.array([70, 255, 255], dtype=np.uint8)
 
-    # Extraer los píxeles correspondientes al color verde fuerte
-    pixeles_verdes_fortes = imagen_hsv[mascara_verde_fuerte != 0]
+    # Crear máscaras para los píxeles que cumplen con los límites de verde fuerte y verde claro
+    mascara_verde_fuerte = cv2.inRange(imagen_hsv, limite_inferior_fuerte, limite_superior_fuerte)
+    mascara_verde_claro = cv2.inRange(imagen_hsv, limite_inferior_claro, limite_superior_claro)
+
+    # Combinar ambas máscaras
+    mascara_verde = cv2.bitwise_or(mascara_verde_fuerte, mascara_verde_claro)
+
+    # Extraer los píxeles correspondientes al verde fuerte y claro
+    pixeles_verdes = imagen_hsv[mascara_verde != 0]
 
     # Calcular la media de los píxeles extraídos
-    if len(pixeles_verdes_fortes) > 0:
-        media_pixeles = np.mean(pixeles_verdes_fortes, axis=0)
+    if len(pixeles_verdes) > 0:
+        media_pixeles = np.mean(pixeles_verdes, axis=0)
         X_train.append(media_pixeles)
-        y_train.append(1)  # Etiqueta para verde fuerte
+        y_train.append(1)  # Etiqueta para verde fuerte o claro
         
         # Calcular y mostrar la matriz de covarianza
-        covarianza = np.cov(pixeles_verdes_fortes, rowvar=False)
+        covarianza = np.cov(pixeles_verdes, rowvar=False)
         
         # Mostrar imágenes y resultados intermedios
         plt.figure(figsize=(10, 5))
@@ -49,8 +57,8 @@ for img_ruta in imagenes_ruta:
         plt.title('Imagen Original')
         
         plt.subplot(1, 3, 2)
-        plt.imshow(mascara_verde_fuerte, cmap='gray')
-        plt.title('Máscara de Verde Fuerte')
+        plt.imshow(mascara_verde, cmap='gray')
+        plt.title('Máscara Combinada de Verde')
         
         plt.subplot(1, 3, 3)
         plt.imshow(cv2.cvtColor(imagen_hsv, cv2.COLOR_HSV2RGB))
@@ -67,17 +75,21 @@ y_train = np.array(y_train)
 modelo = GaussianNB()
 modelo.fit(X_train, y_train)
 
-# Guardar el modelo entrenado 
-#joblib.dump(modelo, 'modeloEntrenadoVerdeFuerte.pkl') #Esto se omite, ya no se ocupo 
+# Guardar el modelo entrenado (comentado si no es necesario)
+#joblib.dump(modelo, 'modeloEntrenadoVerdeFuerte.pkl')
 #print("Modelo entrenado y guardado como 'modeloEntrenadoVerdeFuerte.pkl'")
 
 # Clasificación de una nueva imagen
 nueva_imagen = cv2.imread('Prueba2.jpg')  # Cargar la nueva imagen
-nueva_imagen_gaussiana = cv2.GaussianBlur(nueva_imagen, (5, 5), 0)
-nueva_imagen_hsv = cv2.cvtColor(nueva_imagen_gaussiana, cv2.COLOR_BGR2HSV)
+nueva_imagen_suavizada = cv2.bilateralFilter(nueva_imagen, 9, 75, 75)
+nueva_imagen_hsv = cv2.cvtColor(nueva_imagen_suavizada, cv2.COLOR_BGR2HSV)
 
-# Aplicar el mismo límite de color verde fuerte
-mascara_nueva = cv2.inRange(nueva_imagen_hsv, limite_inferior, limite_superior)
+# Aplicar el mismo límite de color verde fuerte y verde claro
+mascara_nueva_fuerte = cv2.inRange(nueva_imagen_hsv, limite_inferior_fuerte, limite_superior_fuerte)
+mascara_nueva_claro = cv2.inRange(nueva_imagen_hsv, limite_inferior_claro, limite_superior_claro)
+
+# Combinar ambas máscaras
+mascara_nueva = cv2.bitwise_or(mascara_nueva_fuerte, mascara_nueva_claro)
 pixeles_nuevos = nueva_imagen_hsv[mascara_nueva != 0]
 
 # Clasificar los píxeles usando el modelo entrenado
@@ -87,7 +99,7 @@ prediccion = modelo.predict(X_nueva)
 # Crear nueva imagen para visualizar clases
 clases_imagen = np.zeros(nueva_imagen.shape[:2], dtype=np.uint8)  # Imagen en blanco
 
-# Asignar valores de gris: 0 para fondo, 255 para objeto de interés (verde fuerte)
+# Asignar valores de gris: 0 para fondo, 255 para objeto de interés (verde fuerte o claro)
 clases_imagen[mascara_nueva != 0] = 255  
 
 # Mostrar la imagen clasificada
