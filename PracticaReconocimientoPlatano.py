@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.naive_bayes import GaussianNB
 
-# Lista de imágenes de entrenamiento
+# 1. Lista de imágenes de entrenamiento
 imagenes_ruta = ['Entrenamiento1.jpg', 'Entrenamiento2.jpg', 'Entrenamiento3.jpg']
 
 # Inicializar listas para almacenar características y etiquetas
@@ -16,13 +16,13 @@ for img_ruta in imagenes_ruta:
     # Cargar la imagen
     imagen = cv2.imread(img_ruta)
     
-    # Aplicar un filtro gaussiano
+    # 2. Aplicar un filtro gaussiano
     imagen_gaussiana = cv2.GaussianBlur(imagen, (5, 5), 0)
 
-    # Convertir la imagen de BGR a HSV
+    # 3. Convertir la imagen de BGR a HSV
     imagen_hsv = cv2.cvtColor(imagen_gaussiana, cv2.COLOR_BGR2HSV)
 
-    # Definir límites de color amarillo y marrón para segmentación
+    # 4. Definir límites de color amarillo y marrón para segmentación
     limite_inferior_yellow = np.array([20, 100, 100], dtype=np.uint8)  # Amarillo
     limite_superior_yellow = np.array([30, 255, 255], dtype=np.uint8)  
 
@@ -45,10 +45,10 @@ for img_ruta in imagenes_ruta:
         X_train.append(media_pixeles)
         y_train.append(1)  # Etiqueta para amarillo/marrón
         
-        # Calcular y mostrar la matriz de covarianza
+        # 5. Calcular y mostrar la matriz de covarianza
         covarianza = np.cov(pixeles_segmentados, rowvar=False)
         
-        # Mostrar imágenes y resultados intermedios
+        # 6. Mostrar imágenes y resultados intermedios
         plt.figure(figsize=(10, 5))
         
         plt.subplot(1, 3, 1)
@@ -76,7 +76,7 @@ y_train = np.array(y_train)
 print(f'Número de características (X_train): {len(X_train)}')
 print(f'Número de etiquetas (y_train): {len(y_train)}')
 
-# Entrenar el clasificador Naive Bayes
+# 7. Entrenar el clasificador Naive Bayes
 if len(X_train) > 0 and len(X_train) == len(y_train):
     modelo = GaussianNB()
     modelo.fit(X_train, y_train)
@@ -90,7 +90,7 @@ if len(X_train) > 0 and len(X_train) == len(y_train):
     nueva_imagen_gaussiana = cv2.GaussianBlur(nueva_imagen, (5, 5), 0)
     nueva_imagen_hsv = cv2.cvtColor(nueva_imagen_gaussiana, cv2.COLOR_BGR2HSV)
 
-    # Aplicar los mismos límites de color
+    # 4. Aplicar los mismos límites de color
     mascara_nueva_yellow = cv2.inRange(nueva_imagen_hsv, limite_inferior_yellow, limite_superior_yellow)
     mascara_nueva_brown = cv2.inRange(nueva_imagen_hsv, limite_inferior_brown, limite_superior_brown)
     mascara_nueva_total = cv2.bitwise_or(mascara_nueva_yellow, mascara_nueva_brown)
@@ -108,7 +108,7 @@ if len(X_train) > 0 and len(X_train) == len(y_train):
         # Asignar valores de gris: 0 para fondo, 255 para objeto de interés (amarillo/marrón)
         clases_imagen[mascara_nueva_total != 0] = 255  # Amarillo o Marrón
 
-        # Mostrar la imagen clasificada
+        # 6. Mostrar la imagen clasificada
         plt.figure(figsize=(10, 5))
         plt.subplot(1, 2, 1)
         plt.imshow(cv2.cvtColor(nueva_imagen, cv2.COLOR_BGR2RGB))
@@ -120,7 +120,7 @@ if len(X_train) > 0 and len(X_train) == len(y_train):
 
         plt.show()
 
-        # Mostrar resultados intermedios de la nueva imagen
+        # 7. Mostrar resultados intermedios de la nueva imagen
         media_nueva = np.mean(pixeles_nuevos, axis=0)
         covarianza_nueva = np.cov(pixeles_nuevos, rowvar=False)
 
@@ -130,3 +130,8 @@ if len(X_train) > 0 and len(X_train) == len(y_train):
         print('No se encontraron píxeles amarillos o marrones en la nueva imagen.')
 else:
     print('No se pudo entrenar el modelo debido a la inconsistencia en el número de muestras.')
+
+# 8. Mostrar clasificación utilizando la función del clasificador de Bayes de scikit-learn
+if len(pixeles_nuevos) > 0:
+    prediccion_sklearn = modelo.predict(X_nueva)  # Clasificación con scikit-learn
+    print(f'Predicción utilizando scikit-learn: {prediccion_sklearn}')
